@@ -6,7 +6,7 @@ from tkinter import filedialog
 
 def add_padding_to_word(word, padding_length):
     """Menambahkan padding ke setiap kata dengan karakter acak."""
-    padding = ''.join(random.choices(string.ascii_uppercase, k=padding_length))
+    padding = ''.join(random.choices(string.ascii_lowercase, k=padding_length)) 
     return word + padding
 
 def remove_padding_from_word(word, padding_length):
@@ -14,44 +14,77 @@ def remove_padding_from_word(word, padding_length):
     return word[:-padding_length] if padding_length > 0 else word
 
 def vigenere_cipher(text, key, mode='encrypt', padding_length=0):
-    """Enkripsi atau dekripsi dengan cipher Vigenere dan menambahkan/ mengurangi padding."""
+    """Enkripsi atau dekripsi dengan cipher Vigenere, menyisipkan karakter '0', dan menambahkan/mengurangi padding."""
     result = []
-    key = key.upper()
-    text = text.upper()
+    key = key.upper()  # Kunci tetap dalam huruf besar
     key_index = 0
 
-    words = text.split()
+    if mode == 'encrypt':
+        # Gantikan setiap spasi dengan karakter '0'
+        text = text.replace(' ', '0')
+        words = text.split('0')  # Pisahkan berdasarkan '0'
+        for word in words:
+            word_result = []
+            for char in word:
+                if char.isalpha():
+                    shift = ord(key[key_index % len(key)]) - ord('A')  # Hitung pergeseran dari kunci
 
-    for word in words:
-        if mode == 'decrypt':
-            # Hapus padding terlebih dahulu pada dekripsi
-            word = remove_padding_from_word(word, padding_length)
+                    # Karakter baru tetap mengikuti case huruf asli (lower atau upper)
+                    if char.islower():
+                        new_char = chr(((ord(char) - ord('a') + shift) % 26) + ord('a'))
+                    else:
+                        new_char = chr(((ord(char) - ord('A') + shift) % 26) + ord('A'))
+
+                    word_result.append(new_char)
+                    key_index += 1
+                else:
+                    word_result.append(char)  # Karakter non-alphabet tidak diubah
+
+            word_result = ''.join(word_result)
+
+            if mode == 'encrypt':
+                word_result = add_padding_to_word(word_result, padding_length)
+
+            result.append(word_result)
+
+        # Gabungkan kembali hasilnya menjadi satu string setelah enkripsi
+        result_text = '0'.join(result)
+
+    elif mode == 'decrypt':
+        # Pisahkan berdasarkan '0' untuk pemrosesan blok
+        words = text.split('0')  # Pisahkan berdasarkan '0' (yang menggantikan spasi)
         
-        word_result = []
-        for char in word:
-            if char.isalpha():
-                shift = ord(key[key_index % len(key)]) - ord('A')
+        for word in words:
+            if word:
+                # Hapus padding terlebih dahulu pada dekripsi
+                word = remove_padding_from_word(word, padding_length)
+                word_result = []
+                for char in word:
+                    if char.isalpha():
+                        shift = ord(key[key_index % len(key)]) - ord('A')  # Hitung pergeseran dari kunci
 
-                if mode == 'decrypt':
-                    shift = -shift
+                        if mode == 'decrypt':
+                            shift = -shift  # Balik pergeseran untuk dekripsi
 
-                new_char = chr(((ord(char) - ord('A') + shift) % 26) + ord('A'))
-                word_result.append(new_char)
-                key_index += 1
-            else:
-                word_result.append(char)  # Non-alphabetical characters are not encrypted/decrypted
+                        # Karakter baru tetap mengikuti case huruf asli (lower atau upper)
+                        if char.islower():
+                            new_char = chr(((ord(char) - ord('a') + shift) % 26) + ord('a'))
+                        else:
+                            new_char = chr(((ord(char) - ord('A') + shift) % 26) + ord('A'))
 
-        word_result = ''.join(word_result)
+                        word_result.append(new_char)
+                        key_index += 1
+                    else:
+                        word_result.append(char)  # Karakter non-alphabet tidak diubah
+                result.append(''.join(word_result))
+        
+        # Gabungkan kembali hasilnya menjadi satu string setelah dekripsi
+        result_text = ' '.join(result)
 
-        if mode == 'encrypt':
-            word_result = add_padding_to_word(word_result, padding_length)
-
-        result.append(word_result)
-
-    return ' '.join(result)
+    return result_text
 
 def encrypt_decrypt_file(file_path, key, mode, padding_length=0):
-    """Proses enkripsi/dekripsi untuk file"""
+    """Proses enkripsi/dekripsi untuk file."""
     # Membaca file dan mengenkripsi/dekripsi seluruh isinya
     with open(file_path, 'r') as file:
         text = file.read()
@@ -69,7 +102,7 @@ def encrypt_decrypt_file(file_path, key, mode, padding_length=0):
     print(f"Hasil {mode} disimpan dalam file: {output_file}")
 
 def open_file_dialog():
-    """Membuka dialog file untuk memilih file"""
+    """Membuka dialog file untuk memilih file."""
     root = tk.Tk()
     root.withdraw()  # Menyembunyikan jendela utama tkinter
     file_path = filedialog.askopenfilename(title="Pilih File untuk Enkripsi/Dekripsi")
@@ -82,11 +115,11 @@ def main():
 
     while True:
         # Menanyakan apakah input manual atau file
-        input_type = input("Masukkan Pilihan Anda\n[Manual] | [File]: ").strip().lower()
+        input_type = input("Masukkan Pilihan Anda\n[1] Manual | [2] File: ").strip().lower()
 
         # Validasi input
-        while input_type not in ['manual', 'file']:
-            input_type = input("Input Anda Salah. Masukkan pilihan [Manual] atau [File]: ").strip().lower()
+        while input_type not in ['1', '2']:
+            input_type = input("Input Anda Salah. Masukkan pilihan [1] Manual atau [2] File: ").strip().lower()
 
         # Pilih mode encrypt atau decrypt
         mode = input("Masukkan Pilihan Anda\n[1] Encrypt | [2] Decrypt: ").strip()
@@ -101,9 +134,9 @@ def main():
             print("\n*Encrypting ...\n")
         else:
             mode = 'decrypt'
-            print("\n*Decrypting\n")
+            print("\n*Decrypting ...\n")
 
-        if input_type == 'manual':
+        if input_type == '1':
             # Masukkan jumlah kali enkripsi/dekripsi
             times = int(input("Mau melakukan manual input berapa kali? "))
 
@@ -122,45 +155,19 @@ def main():
                 text = input(text_prompt)
                 key = input("Masukkan Key: ")
 
-                # Menanyakan panjang padding
-                padding_length = int(input("Masukkan panjang padding yang diinginkan untuk setiap kata: ")) if mode == 'encrypt' else 0
-
-                print("\n")
+                # Menentukan panjang padding otomatis
+                padding_length = len(key) - 2
 
                 # Proses cipher
                 result = vigenere_cipher(text, key, mode, padding_length)
 
                 # Menampilkan hasil
                 if mode == 'encrypt':
-                    subtitle = "[ENCRYPTED USING VIGENERE CIPHER]"
-                    print("-" * len(subtitle))
-                    print(subtitle)
-                    print("-" * len(subtitle))
-                    print(f"#plaintext: {text}")
-                    print(f"#key: {key}")
-                    print("[CIPHER CREATED!]")
-
-                    print(f"#Result: {text} -> {result}")
+                    print(f"\nHasil Encrypt: {result}")
                 else:
-                    subtitle = "[DECRYPTED USING VIGENERE CIPHER]"
-                    print("-" * len(subtitle))
-                    print(subtitle)
-                    print("-" * len(subtitle))
-                    print(f"#ciphertext: {text}")
-                    print(f"#key: {key}")
+                    print(f"\nHasil Decrypt: {result}")
 
-                    # Tanyakan jumlah padding yang harus dihapus
-                    padding_input = int(input("Masukkan panjang padding yang harus dihapus dari setiap kata: "))
-
-
-                    print("[PLAINTEXT FOUND!]")
-                    
-                    # Proses dekripsi dengan menghapus padding terlebih dahulu
-                    result = vigenere_cipher(text, key, mode, padding_input)
-
-                    print(f"#Result: {text} -> {result}")
-
-        elif input_type == 'file':
+        elif input_type == '2':
             # Membuka file dialog untuk memilih file
             file_path = open_file_dialog()
 
@@ -171,16 +178,20 @@ def main():
             # Masukkan key untuk enkripsi/dekripsi
             key = input("Masukkan Key: ")
 
-            # Menanyakan panjang padding
-            padding_length = int(input("Masukkan panjang padding yang diinginkan untuk setiap kata (0 jika dekripsi): "))
+            # Menentukan panjang padding otomatis
+            padding_length = len(key) - 2
+            print(f"Panjang padding otomatis dihitung: {padding_length}")
 
             # Proses file (enkripsi/dekripsi)
             encrypt_decrypt_file(file_path, key, mode, padding_length)
 
         # Tanyakan apakah ingin mengulang
-        restart = input("\nRestart? [Ya | Tidak]: ").strip().lower()
+        restart = input("\nRestart? [1] Ya | [2] Tidak: ").strip().lower()
 
-        if restart != 'ya':
+        while restart not in ['1', '2']:
+            restart = input("Input Anda Salah. Masukkan pilihan [1] untuk Ya atau [2] untuk Tidak: ").strip().lower()
+
+        if restart == '2':
             print("Terima Kasih, Sampai Jumpa!")
             break
 
